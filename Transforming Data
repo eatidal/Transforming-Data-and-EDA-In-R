@@ -1,0 +1,88 @@
+---
+title: "Transforming Data"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# load a libraries
+library(tidyverse)
+library(nycflights13)
+
+# load data 
+fl <- flights
+View(fl)
+
+# Filter function
+jan1 <- filter(fl, month == 1 , day == 1)
+nov_dec <- filter(fl, month == 11 | month == 12)
+no_delay <- filter(fl, dep_delay == 0 & arr_delay == 0)
+not_late <- filter(fl, arr_delay == 0)
+
+# Arrange function
+arrange(fl, year,month,day)
+arrange(fl,desc(dep_delay))
+
+
+# Select function 
+select(fl, dep_delay, everything())
+M_flights <- fl[starts_with("M", vars = flights$dest),]
+select(fl, dep_delay, everything())
+
+# Mutate function
+flights_sml <- select(fl,
+                      year:day,
+                      ends_with("delay"),
+                      distance,
+                      air_time)
+flights_sml_odd <- mutate(flights_sml, 
+                          gain = dep_delay - arr_delay,
+                          speed = distance/air_time*60,
+                          hours = air_time/60,
+                          gain_per_hour =gain/hours
+)
+
+# summarise function
+summarise(fl, delay= mean(dep_delay, na.rm = TRUE))
+
+by_dest <- group_by(fl, dest)
+delay <- summarise(by_dest,
+                   count=n(),
+                   dist= mean(distance,na.rm = TRUE),
+                   delay = mean(arr_delay,na.rm = TRUE)
+)
+delay <- filter(delay,  count>20, dest!="HNL")
+
+ggplot(data = delay, mapping = aes(x =dist, y =delay)) +
+  geom_point(aes(size = count), alpha =0.3)+
+  geom_smooth(se = FALSE)
+
+
+# # Using Pipes for speed
+delays <- fl %>% 
+  group_by(dest) %>%
+  summarize( count= n(),
+             dist=mean(distance, na.rom=TRUE),
+             delay=mean(arr_delay, na.rm=TRUE)
+             ) %>%
+  filter(count > 20, dest !="HNL")
+
+# # Missing values
+not_cancelled <- fl %>%
+  filter(!is.na(dep_delay), !is.na(arr_delay))
+
+not_cancelled %>% 
+  group_by(year, month, day) %>%
+  summarize(mean(dep_delay))
+
+delays <- not_cancelled %>%
+  group_by(tailnum) %>%
+  summarize( 
+    delay = mean(arr_delay, na.rm=TRUE),
+             n = n()
+        )
+
+ggplot(data=delays,mapping = aes(x=n, y=delay)) + 
+  geom_point(alpha=1/10)
+  
